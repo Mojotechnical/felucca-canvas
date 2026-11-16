@@ -1,0 +1,58 @@
+# Felucca Canvas: builds upstream Felucca + felucca-canvas.patch and publishes the browser installer.
+name: Build and publish installer
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+concurrency:
+  group: pages
+  cancel-in-progress: true
+env:
+  RELEASE: "1.8-cnv"
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Upstream Felucca (the commit the patch is made against) + the Canvas patch
+        run: |
+          git clone --recurse-submodules https://github.com/hugelton/Felucca.git felucca
+          cd felucca
+          git checkout ca1db43
+          git submodule update --init --recursive
+          git apply ../felucca-canvas.patch
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install Pillow fonttools
+      - name: JieLi toolchain and SDK
+        working-directory: felucca
+        run: |
+          tools/get_toolchain.sh
+          git clone --depth 1 --branch AC79NN_SDK_V1.2.1_2023-12-13 https://gitee.com/Jieli-Tech/fw-AC79_AIoT_SDK.git ~/fw-AC79_AIoT_SDK
+      - name: Build the firmware
+        working-directory: felucca
+        run: ./build.sh --release "$RELEASE"
+      - name: Make the installer site
+        working-directory: felucca
+        run: python3 web/make_site.py "build/felucca-$RELEASE.fwsc" "$RELEASE" ../_site
+      - uses: actions/upload-artifact@v4
+        with:
+          name: felucca-canvas-fwsc
+          path: felucca/build/felucca-${{ env.RELEASE }}.fwsc
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}webapp/installer/
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
