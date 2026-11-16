@@ -48,7 +48,9 @@ def main(pkg, version, out, title=None, back=None):
     html = (HERE / "index_pkg.html").read_text(encoding="utf-8")
     lib = strip_module((HERE / "fm1pkg.js").read_text(encoding="utf-8")) + "\n" + \
         strip_module((HERE / "fm1ota.js").read_text(encoding="utf-8")) + "\n" + \
-        strip_module((HERE / "fm1backup.js").read_text(encoding="utf-8"))
+        strip_module((HERE / "fm1backup.js").read_text(encoding="utf-8")) + "\n" + \
+        ((HERE / "neon_fractal.js").read_text(encoding="utf-8") if (HERE / "neon_fractal.js").exists() else
+         "function neonFractal() {}")
     name = f"felucca-{re.sub(r'[^A-Za-z0-9.-]', '-', version)}.fwsc"
     meta = {"version": version, "product": product, "pkg": "../../firmware/" + name}
     if title:                                      # (a site of several firmwares: tools/make_canvas_site.py)

@@ -7,46 +7,60 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Felucca</title>
 <style>
-  :root { --bg: #fff; --fg: #000; --dim: #777; }
-  @media (prefers-color-scheme: dark) {
-    :root:not([data-theme="light"]) { --bg: #000; --fg: #fff; --dim: #888; }
-  }
-  :root[data-theme="dark"] { --bg: #000; --fg: #fff; --dim: #888; }
-  body { margin: 0; background: var(--bg); color: var(--fg);
-         font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
-  main { max-width: 520px; margin: 0 auto; padding: 48px 16px; }
-  h1 { font-size: 24px; font-weight: 600; margin: 0 0 24px; }
-  .lang { float: right; font-size: 13px; color: var(--dim); cursor: pointer; text-decoration: underline; background: none; padding: 0; color: var(--dim); }
+  /* Felucca Canvas: dark neon over the fractal (web/neon_fractal.js, still here: the CPU stays with the install) */
+  :root { --bg: #05010d; --fg: #f3eaff; --dim: #b49ad8; --pink: #ff2bd6; --cyan: #19f0ff; --lime: #8dff5a; }
+  html { background: var(--bg); }
+  body { margin: 0; color: var(--fg); font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif; }
+  #bg { position: fixed; inset: 0; width: 100vw; height: 100vh; z-index: -2; filter: saturate(1.25); }
+  .veil { position: fixed; inset: 0; z-index: -1; background: radial-gradient(ellipse at 50% 30%, rgba(5,1,13,.2), rgba(5,1,13,.6) 80%); }
+  main { max-width: 540px; margin: 32px auto; padding: 32px 24px; background: rgba(12,2,28,.74);
+         backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); border: 1px solid rgba(25,240,255,.45);
+         border-radius: 16px; box-shadow: 0 0 18px rgba(25,240,255,.25), inset 0 0 22px rgba(255,43,214,.12); }
+  h1 { font-size: 28px; font-weight: 800; margin: 0 0 24px; background: linear-gradient(90deg, var(--pink), var(--cyan) 60%, var(--lime));
+       -webkit-background-clip: text; background-clip: text; color: transparent;
+       filter: drop-shadow(0 0 8px rgba(255,43,214,.55)) drop-shadow(0 0 18px rgba(25,240,255,.35)); }
+  a { color: var(--cyan); }
+  .lang { float: right; font-size: 13px; cursor: pointer; text-decoration: underline; background: none; padding: 0; color: var(--dim); }
   p { margin: 0 0 16px; }
-  button { font: inherit; background: var(--fg); color: var(--bg); border: 0; padding: 8px 20px; cursor: pointer; }
-  button:disabled { opacity: .3; cursor: default; }
+  button { font: inherit; font-weight: 700; color: #0a0014; border: 0; padding: 10px 24px; cursor: pointer; border-radius: 10px;
+           background: linear-gradient(90deg, var(--pink), var(--cyan));
+           box-shadow: 0 0 14px rgba(255,43,214,.6), 0 0 26px rgba(25,240,255,.35); }
+  button.lang { box-shadow: none; font-weight: 400; }
+  button:disabled { opacity: .3; cursor: default; box-shadow: none; }
   .small { color: var(--dim); font-size: 13px; }
-  .prog { width: 100%; height: 14px; margin-top: 24px; border: 1px solid var(--fg); border-radius: 7px; overflow: hidden; }
-  #barfill { height: 100%; width: 0; background: var(--fg); transition: width .25s; }
+  summary { cursor: pointer; }
+  .prog { width: 100%; height: 16px; margin-top: 28px; border: 1px solid var(--cyan); border-radius: 8px; overflow: hidden;
+          background: rgba(25,240,255,.06); box-shadow: 0 0 10px rgba(25,240,255,.45), inset 0 0 8px rgba(25,240,255,.2); }
+  #barfill { height: 100%; width: 0; transition: width .25s;
+             background: linear-gradient(90deg, var(--pink), #8c28ff 45%, var(--cyan) 80%, var(--lime));
+             box-shadow: 0 0 14px rgba(255,43,214,.8); }
   .progline { display: flex; justify-content: space-between; align-items: baseline; margin-top: 8px; }
-  #pct { font-size: 28px; font-weight: 600; font-variant-numeric: tabular-nums; }
+  #pct { font-size: 30px; font-weight: 800; font-variant-numeric: tabular-nums; color: var(--cyan);
+         text-shadow: 0 0 10px rgba(25,240,255,.9), 0 0 22px rgba(255,43,214,.5); }
   #status { margin-top: 0; min-height: 1.6em; }
   #logbox { margin-top: 16px; color: var(--dim); font-size: 13px; }
   pre { color: var(--dim); font-size: 12px; white-space: pre-wrap; margin-top: 8px; max-height: 240px; overflow: auto; }
-  .back { font-size: 13px; color: var(--dim); }
+  .back { font-size: 13px; }
+  .back a { color: var(--dim); }
 </style>
 </head>
 <body>
+<canvas id="bg"></canvas><div class="veil"></div>
 <main>
   <button class="lang" id="lang"></button>
-  <p class="back" id="backp" hidden><a id="back" style="color:inherit" href="#">&larr; All firmwares</a></p>
+  <p class="back" id="backp" hidden><a id="back"  href="#">&larr; All firmwares</a></p>
   <h1 id="title">Felucca</h1>
   <p data-t="intro"></p>
   <p data-t="warn"></p>
   <p class="small" data-t="direct"></p>
   <p class="small" data-t="beta"></p>
   <p class="small"><span data-t="brick"></span>
-    <a href="https://github.com/kurogedelic/FM-1-transporter" target="_blank" rel="noopener" style="color:inherit">FM-1-transporter</a></p>
+    <a href="https://github.com/kurogedelic/FM-1-transporter" target="_blank" rel="noopener" >FM-1-transporter</a></p>
   <p><button id="go" disabled data-t="install"></button></p>
   <details style="margin-top:24px">
     <summary data-t="stockTitle"></summary>
     <p class="small" data-t="back"></p>
-    <p class="small"><a href="https://www.m-vave.com/download" target="_blank" rel="noopener" style="color:inherit">M-VAVE Downloads</a></p>
+    <p class="small"><a href="https://www.m-vave.com/download" target="_blank" rel="noopener" >M-VAVE Downloads</a></p>
     <p><label><span data-t="stockFile"></span><br><input id="stock-file" type="file" accept=".fwsc"></label></p>
     <p><button id="stock-go" disabled data-t="stockGo"></button></p>
     <p class="small" data-t="stockBackup"></p>
@@ -55,12 +69,12 @@
   <div class="prog"><div id="barfill"></div></div>
   <div class="progline"><p id="status"></p><span id="pct"></span></div>
   <details id="logbox"><summary data-t="details"></summary><pre id="log"></pre></details>
-  <p><a href="../editor/" style="color:inherit" data-t="editor"></a></p>
-  <p class="small">Felucca by Leo Kuroshita (@kurogedelic), <a href="https://hugelton.com" target="_blank" rel="noopener" style="color:inherit">Hügelton Instruments</a>, with its PHASE engine and drum voices, the Hügelton Sample Pack (CC0 1.0) and Fukiai icons (MIT).<br>
+  <p><a href="../editor/"  data-t="editor"></a></p>
+  <p class="small">Felucca by Leo Kuroshita (@kurogedelic), <a href="https://hugelton.com" target="_blank" rel="noopener" >Hügelton Instruments</a>, with its PHASE engine and drum voices, the Hügelton Sample Pack (CC0 1.0) and Fukiai icons (MIT).<br>
     Font: Inter Tight (The Inter Project Authors, SIL OFL 1.1). Samples: Versilian Studios VSCO-2 Community Edition and VCSL (CC0 1.0).<br>
-    FM6 engine: msfa from Dexed (Google Inc., Pascal Gauthier, Apache-2.0). The package also holds three JieLi AC79 SDK files, uboot.boot, cfg_tool.bin and eq_cfg_hw.bin (JieLi Technology, Apache-2.0). <a href="../../firmware/LICENSING.md" style="color:inherit">Licences</a>: <a href="../../firmware/LICENSE" style="color:inherit">GPL-3.0</a>, <a href="../../firmware/LICENSES/Apache-2.0.txt" style="color:inherit">Apache-2.0</a>, <a href="../../firmware/LICENSES/" style="color:inherit">all</a>.<br>
+    FM6 engine: msfa from Dexed (Google Inc., Pascal Gauthier, Apache-2.0). The package also holds three JieLi AC79 SDK files, uboot.boot, cfg_tool.bin and eq_cfg_hw.bin (JieLi Technology, Apache-2.0). <a href="../../firmware/LICENSING.md" >Licences</a>: <a href="../../firmware/LICENSE" >GPL-3.0</a>, <a href="../../firmware/LICENSES/Apache-2.0.txt" >Apache-2.0</a>, <a href="../../firmware/LICENSES/" >all</a>.<br>
     M-VAVE and FM-1 are trademarks of their respective owners.<br>
-    <span data-t="license"></span> <a href="https://github.com/hugelton/Felucca" target="_blank" rel="noopener" style="color:inherit">github.com/hugelton/Felucca</a></p>
+    <span data-t="license"></span> <a href="https://github.com/hugelton/Felucca" target="_blank" rel="noopener" >github.com/hugelton/Felucca</a></p>
 </main>
 <script type="module">
 /*LIB*/
@@ -147,6 +161,7 @@ const log = (t) => { $("log").textContent += t + "\n"; };
 const setBar = (v) => { v = Math.max(0, Math.min(100, v)); $("barfill").style.width = v + "%"; $("pct").textContent = Math.round(v) + "%"; };
 let image = null;
 const meta = /*META*/;
+neonFractal($("bg"), false);                       /* the background, drawn once */
 if (meta.title) { $("title").textContent = meta.title; document.title = meta.title; }   /* (a site of several firmwares) */
 if (meta.back) { $("back").href = meta.back; $("backp").hidden = false; }
 
