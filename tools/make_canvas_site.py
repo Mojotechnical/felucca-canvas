@@ -123,6 +123,15 @@ def main(out, pairs):
                                  desc=html.escape(desc)))
     fractal = (ROOT / "web" / "neon_fractal.js").read_text(encoding="utf-8")
     (out / "index.html").write_text(PAGE.format(cards="\n".join(cards), fractal=fractal), encoding="utf-8")
+    # The first Canvas site had a single installer at webapp/installer/ (Felucca 1.8-cnv). Old bookmarks and cached
+    # tabs still open that address, so send them to the firmware list (and the editor to the 16+FX build's editor).
+    for sub, to in (("webapp/installer", "../../"), ("webapp/editor", "../../16fx/webapp/editor/"), ("webapp", "../")):
+        (out / sub).mkdir(parents=True, exist_ok=True)
+        (out / sub / "index.html").write_text(
+            '<!doctype html><meta charset="utf-8"><title>Felucca Canvas</title>'
+            f'<meta http-equiv="refresh" content="0; url={to}">'
+            '<meta http-equiv="cache-control" content="no-cache">'
+            f'<p>This page moved. <a href="{to}">Felucca Canvas firmwares</a></p>', encoding="utf-8")
     (out / ".nojekyll").write_text("")
     print(f"canvas site: {out}: {len(cards)} firmwares")
 
