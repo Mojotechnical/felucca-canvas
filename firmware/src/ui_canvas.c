@@ -180,7 +180,34 @@ static uint32_t canvas_sig(void)
     h = (h ^ (cv_src(TSEL->p) * 31u + cv_nzones(cv_src(TSEL->p)) + cv_lay(TSEL->p) * 977u)) * 16777619u;
     return h;
 }
+
+/* power-on (main.c, after the autosave): Felucca Canvas starts as the instrument. A restored project that has no
+ * CANVAS track gets one on track 1 (its first preset, SPREAD; the project's saved slots are not touched, the autosave
+ * takes it from here); the first CANVAS track is selected and the GRAINS page opens, the EDIT button returning to it */
+static void canvas_boot(void)
+{
+    uint32_t i, k = NTRK;
+    for (i = 0; i < NTRK && k == NTRK; i++)
+        if (trk[i].eng_req % NENGINES == ENGI_CANVAS)
+            k = i;
+    if (k == NTRK) {
+        k = 0;
+        set_engine_of(&trk[0], ENGI_CANVAS);
+    }
+    track_select(k);
+    for (i = 0; i < NPAGES; i++)
+        if (PAGES[i].graph == GR_CANVAS)
+            break;
+    if (i < NPAGES) {
+        ui.page = (uint8_t)i;
+        ui.fam_last[PAGES[i].fam] = (uint8_t)i;
+        ui.home = 0;
+        page_entered();
+    }
+    ui.force = 1;
+}
 #else
 static int canvas_page_ok(void) { return 0; }
 static int canvas_page_on(void) { return 0; }
+static void canvas_boot(void) {}
 #endif

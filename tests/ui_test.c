@@ -10133,6 +10133,21 @@ static int test_canvas(void)
     ok &= !memcmp(keep, cv_slot[0], sizeof keep);
     bad += check("GRAINS: a preset load sets its grains and layout; undo brings the grains back", ok);
     go_home();
+    for (i = 0; i < NTRK; i++)                         /* power-on with a project of no CANVAS track (an older one) */
+        set_engine_of(&trk[i], ENGI_FM6);
+    song.sel = 2;
+    canvas_boot();
+    frame();
+    ok = trk[0].eng_req == ENGI_CANVAS && trk[1].eng_req == ENGI_FM6 && song.sel == 0 && canvas_page_on();
+    bad += check("power-on: no CANVAS track -> track 1 becomes CANVAS, selected, on the GRAINS page", ok);
+    go_home();
+    set_engine_of(&trk[0], ENGI_FM6);
+    set_engine_of(&trk[2], ENGI_CANVAS);
+    canvas_boot();
+    frame();
+    ok = trk[0].eng_req == ENGI_FM6 && song.sel == 2 && canvas_page_on();
+    bad += check("power-on: a CANVAS track kept (track 3) -> it is selected, the GRAINS page, the rest untouched", ok);
+    go_home();
     frame();
     return bad;
 }
