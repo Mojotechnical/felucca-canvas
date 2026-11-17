@@ -96,8 +96,10 @@ static void host_preset_values(track_t *t, uint32_t e, uint32_t pi, const preset
     for (i = 0; i < 8u; i++)
         t->p[P_E0 + i] = p->e[i];
 #if FELUCCA_CANVAS
-    if (e == ENGI_CANVAS)                         /* its canvas (ui.c apply_preset_to: canvas_load_layout) */
+    if (e == ENGI_CANVAS) {                       /* its canvas (ui.c apply_preset_to: canvas_load_layout) */
         canvas_load_layout(t, pi);
+        canvas_load_sound(t, pi);
+    }
 #endif
     t->p[P_ATK] = p->env[0];
     t->p[P_DEC] = p->env[1];

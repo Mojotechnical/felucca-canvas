@@ -156,6 +156,9 @@ static const char *snd_missing(const track_t *t, uint32_t *code)
  * engine indices, never DIGITAL's reserved 1 (with FELUCCA_FM4 it follows FM6). The indices stay as they are (the
  * stores and the protocol hold them); only this table orders them */
 static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
+#if CANVAS_ONLY
+    15,                          /* Felucca Canvas: the granular instrument only (the others stay built: old data plays) */
+#else
     0,                           /* ANALOG */
     12,                          /* FM6 */
 #if FELUCCA_FM4
@@ -173,6 +176,7 @@ static const uint8_t ENGINE_ORDER[NENG_SHOWN] = {
     10,                          /* DRUM */
 #if FELUCCA_ADPCM
     14,                          /* ADPCM (1.8): last, so the EDIT layer's white keys keep the 13 above (ui_layer.c LY_ENG_KEYS) */
+#endif
 #endif
 };
 
@@ -241,8 +245,8 @@ static const struct {
 #define NPATTERNS (sizeof PATTERNS / sizeof PATTERNS[0])
 
 /* the parts at power-on (engine, preset, PATTERNS[n - 1] in the sequencer, 0 = empty: all are): bass, pad, lead, drums */
-#if FELUCCA_CANVAS && FELUCCA_CANVAS_KEYS >= 0   /* a Canvas firmware of one layout: track 1 powers on as CANVAS SPREAD */
-static const uint8_t TRK_DEF[NPART][3] = {{ENGI_CANVAS, 0, 0}, {ENGI_FM6, 4, 0}, {3, 0, 0}, {ENGI_DRUM, 0, 0}};
+#if CANVAS_ONLY                  /* Felucca Canvas: four granular parts: RAINFALL, GLASS GDN, DATA RAIN, STORM */
+static const uint8_t TRK_DEF[NPART][3] = {{ENGI_CANVAS, 0, 0}, {ENGI_CANVAS, 5, 0}, {ENGI_CANVAS, 10, 0}, {ENGI_CANVAS, 15, 0}};
 #else
 static const uint8_t TRK_DEF[NPART][3] = {{0, 4, 0}, {ENGI_FM6, 4, 0}, {3, 0, 0}, {ENGI_DRUM, 0, 0}}; /* ANALOG ACID,
                                                                        * FM6 PAD (was DIGITAL PAD), LOFI PULSE LD, DRUM KIT */

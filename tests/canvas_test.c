@@ -203,9 +203,9 @@ int main(int argc, char **argv)
         }
         render(FS * 3u, 0, 0, 0, 0);
         render(FS / 4u, 0, &pk2, 0, 0);
-        snprintf(buf, sizeof buf, "%-7s three grains: rms %.4f, peak %.3f < 2, |dc| %.5f; off: silent (%.5f), no voice left",
+        snprintf(buf, sizeof buf, "%-7s three grains: rms %.4f, peak %.3f < 2, |dc| %.5f (< 0.01 + rms / 25: short grains of a glitch hold some; the master blocks DC); off: silent (%.5f), no voice left",
                  ENG_CANVAS.presets[pi].name, rms, pk, fabs(mean), pk2);
-        check(buf, rms > 0.004 && pk < 2.0 && fabs(mean) < 0.01 && pk2 == 0.0 && !voices_active());
+        check(buf, rms > 0.004 && pk < 2.0 && fabs(mean) < 0.01 + rms * 0.04 && pk2 == 0.0 && !voices_active());
     }
 
     /* 4. LATCH and HOLD */

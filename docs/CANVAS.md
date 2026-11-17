@@ -5,16 +5,36 @@ the spirit of a hardware granular synth. **The keys are grains**: each grain key
 position in the sample material, grain size, density and pitch. Tap keys to start streams and let them sustain; they blend
 like paint. Other keys hold **glitch effects**.
 
-Everything else in Felucca is unchanged: the other 13 engines, the four tracks, the sequencer, FX, projects, the editor.
+**The three firmwares on the install page are granular only.** All four tracks are CANVAS, PRESETS offers only the
+granular sounds, and HOME always brings back the GRAINS page with its fractal (tap HOME again for the MIXER). A project or
+user preset made with another engine plays its track as CANVAS. (A build without `FELUCCA_CANVAS_KEYS` keeps every
+Felucca engine, with CANVAS as one of them.)
+
+### The sounds
+
+The granular firmwares carry their own source material, synthesized by `tools/gen_canvas_material.py` (no recordings,
+nothing third-party). SRC picks a set; POS runs through its four sounds, a quarter each, and every sound changes along its
+length, so POS, SCAN, SPRY and the LFO move through it:
+
+| SRC | POS 0..31 | 32..63 | 64..95 | 96..127 |
+|---|---|---|---|---|
+| NATURE | RAIN (downpour to last drops) | CREEK (bubbles over a rush) | BIRDS (wind, chirps, a trill, a call and answer) | NIGHT (crickets, frogs, hum) |
+| DREAM | GLASS (FM bells arriving) | DRIFT (wide chord, filter opening and closing) | VOX (a sung a-e-i-o-u) | LIQUID (resonant wobble speeding up) |
+| GLITCH | DATA (crushed bursts, bleeps) | CIRCUIT (chaotic feedback FM) | TAPE (a failing tape arpeggio) | STATIC (radio tuning, morse) |
+
+MIX spreads eight of the twelve across POS. The 17 factory sounds each set every grain differently (place, size, density,
+a pitch from a scale) and add movement with the LFO and an INSERT:
+RAINFALL, CREEK, DAWN SONG, NIGHT POND, WILDWOOD (NATURE); GLASS GDN, SLOW BLOOM, CHOIR, MELT, DREAMSCAPE (DREAM);
+DATA RAIN, BENT, WOW+FLUTR, SHORTWAVE, MELTDOWN (GLITCH); STORM, BIOLUMIN (MIX). The four tracks start as RAINFALL,
+GLASS GDN, DATA RAIN and STORM.
 
 > Unofficial firmware. Not affiliated with M-VAVE, Hügelton Instruments or any granular-synth maker. You install it at
 > your own risk; back up your projects and presets first (the web editor's backup).
 
 ## Getting started
 
-1. On the three dedicated firmwares (see below), track 1 already starts as CANVAS. Otherwise, on a track, hold **EDIT**
-   and press **A4** (the tenth white key) for CANVAS, or turn PRESETS to a CANVAS sound
-   (SPREAD, CLOUDS, CHORDS, GLITCH, DRONE, PERC).
+1. The granular firmwares start on the GRAINS page, every track CANVAS; turn PRESETS on any other page for another sound.
+   (In a build of every engine: on a track, hold **EDIT** and press **A4** for CANVAS, or turn PRESETS to a CANVAS sound.)
 2. **Tap a white key**: a grain stream starts and keeps sounding. Tap more keys to layer them; tap one again to fade it out.
 3. **Hold a black key** for a glitch while it's held.
 4. **Hold a grain key and turn KNOB 1..4** to change that grain's position, size, density and pitch while it plays.

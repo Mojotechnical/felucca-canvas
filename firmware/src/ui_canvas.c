@@ -184,9 +184,44 @@ static uint32_t canvas_sig(void)
 /* power-on (main.c, after the autosave): Felucca Canvas starts as the instrument. A restored project that has no
  * CANVAS track gets one on track 1 (its first preset, SPREAD; the project's saved slots are not touched, the autosave
  * takes it from here); the first CANVAS track is selected and the GRAINS page opens, the EDIT button returning to it */
+/* the GRAINS page shown (the selected track a CANVAS one): 1 = shown */
+static int canvas_show(void)
+{
+    uint32_t i;
+    if (!canvas_page_ok())
+        return 0;
+    for (i = 0; i < NPAGES; i++)
+        if (PAGES[i].graph == GR_CANVAS)
+            break;
+    if (i == NPAGES)
+        return 0;
+    ui.page = (uint8_t)i;
+    ui.fam_last[PAGES[i].fam] = (uint8_t)i;
+    ui.home = 0;
+    page_entered();
+    return 1;
+}
+
+/* Felucca Canvas (CANVAS_ONLY): every part is CANVAS. A part that is not (an older project, a user preset, the editor,
+ * a program change) becomes one, with its factory sound of power-on (engines.c TRK_DEF); main.c, every frame */
+static void canvas_lock(void)
+{
+#if CANVAS_ONLY
+    uint32_t i;
+    for (i = 0; i < NTRK; i++)
+        if (trk[i].eng_req % NENGINES != ENGI_CANVAS) {
+            set_engine_of(&trk[i], ENGI_CANVAS);
+            apply_preset_to(&trk[i], TRK_DEF[i % NPART][1]);
+            if (i == song.sel && !ui.home && cur_page()->fam == FAM_EDIT)
+                canvas_show();
+        }
+#endif
+}
+
 static void canvas_boot(void)
 {
     uint32_t i, k = NTRK;
+    canvas_lock();
     for (i = 0; i < NTRK && k == NTRK; i++)
         if (trk[i].eng_req % NENGINES == ENGI_CANVAS)
             k = i;
@@ -195,19 +230,13 @@ static void canvas_boot(void)
         set_engine_of(&trk[0], ENGI_CANVAS);
     }
     track_select(k);
-    for (i = 0; i < NPAGES; i++)
-        if (PAGES[i].graph == GR_CANVAS)
-            break;
-    if (i < NPAGES) {
-        ui.page = (uint8_t)i;
-        ui.fam_last[PAGES[i].fam] = (uint8_t)i;
-        ui.home = 0;
-        page_entered();
-    }
+    canvas_show();
     ui.force = 1;
 }
 #else
 static int canvas_page_ok(void) { return 0; }
 static int canvas_page_on(void) { return 0; }
 static void canvas_boot(void) {}
+static void canvas_lock(void) {}
+static int canvas_show(void) { return 0; }
 #endif

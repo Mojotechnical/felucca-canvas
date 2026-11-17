@@ -43,7 +43,11 @@
 #define CV_NOTE0 53              /* key 0's note (F3) */
 
 enum { CV_SRC_MIX, CV_SRC_PIANO, CV_SRC_FLUTE, CV_SRC_SAX, CV_SRC_USR1, CV_SRC_USR2, CV_SRC_USR3, CV_SRC_N };
+#if FELUCCA_CANVAS_KEYS >= 0          /* the granular-only firmware: its own synthesized material (gen_canvas_material.py) */
+static const char *const N_CV_SRC[CV_SRC_N] = {"MIX", "NATURE", "DREAM", "GLITCH", "USR1", "USR2", "USR3"};
+#else
 static const char *const N_CV_SRC[CV_SRC_N] = {"MIX", "PIANO", "FLUTE", "SAX", "USR1", "USR2", "USR3"};
+#endif
 static const uint8_t CV_SRC_SET[CV_SRC_N] = {0xFF, 0, 2, 3, SMP_NSETS, SMP_NSETS + 1, SMP_NSETS + 2};   /* SMP_ALL index */
 #define CV_NZB ((uint32_t)NELEM(SMP_ZONES))  /* the built-in zones */
 enum { CV_LAY_16, CV_LAY_27, CV_LAY_8, CV_LAY_N };
@@ -524,6 +528,77 @@ static uint32_t canvas_post(track_t *t, int32_t *out, uint32_t n)
     return ngr ? (ngr + 3u) / 4u : 1u;
 }
 
+#if FELUCCA_CANVAS_KEYS >= 0
+/* the granular-only firmware's factory sounds: each a recipe for its grains (spread over the grains the layout has, so
+ * 8, 16 or 27 keys cover the same sound) and its movement (the LFO, an INSERT). The material's four sounds are a
+ * quarter of POS each: NATURE RAIN CREEK BIRDS NIGHT, DREAM GLASS DRIFT VOX LIQUID, GLITCH DATA CIRCUIT TAPE STATIC */
+enum { CV_SC_NONE, CV_SC_PENTA, CV_SC_MINP, CV_SC_CHORD, CV_SC_OCT, CV_SC_FIFTH, CV_SC_WILD, CV_SC_N };
+static const int8_t CV_SCALE[CV_SC_N][6] = {
+    {0, 0, 0, 0, 0, 0}, {0, 2, 4, 7, 9, 12}, {0, 3, 5, 7, 10, 12}, {0, 4, 7, 11, 14, 19},
+    {0, 12, -12, 0, 12, 24}, {0, 7, 12, 19, 24, -5}, {0, 6, -7, 13, 1, -11}};
+typedef struct {
+    uint8_t p0, p1;              /* POS: the first grain's, the last grain's (the rest between, in order) */
+    uint8_t size, dens;          /* their middle values */
+    uint8_t vsize, vdens, vpos;  /* how much each grain differs (a fixed scatter, every grain its own) */
+    uint8_t scale;               /* CV_SC_*: the grains' pitches, low to high, through the scale */
+    int8_t base;                 /* the lowest grain's pitch (semitones) */
+    uint8_t lrate, lwave;        /* the LFO: RATE (0..127), WAVE (SIN TRI SAW SQR S&H) */
+    int8_t lshp, lpit, lflt;     /* its depth to the place, the pitch, the TONE */
+    uint8_t ins, ia;             /* INSERT type (OFF SOFT HARD FOLD FUZZ CRUSH PHASR FLANG CHOR) and its A */
+} cv_recipe_t;
+static const cv_recipe_t CV_RECIPE[] = {
+    /*  p0   p1 size dens vs vd vp scale         base lrate lw shp pit flt  ins ia */
+    {   2,  30, 96, 96, 20, 20, 6, CV_SC_NONE,   -5,  20, 0, 14,  0, 10,  0,  0},  /* RAINFALL */
+    {  34,  62, 72, 108, 30, 14, 4, CV_SC_PENTA,  -7,  50, 4, 22,  0,  0,  0,  0},  /* CREEK */
+    {  66,  94, 60, 72, 36, 30, 3, CV_SC_PENTA,   0,  40, 1,  8,  4,  0,  0,  0},  /* DAWN SONG */
+    {  98, 126, 92, 84, 18, 24, 5, CV_SC_OCT,    -12, 30, 0, 10,  0, 16,  0,  0},  /* NIGHT POND */
+    {   4, 124, 104, 92, 16, 16, 8, CV_SC_FIFTH, -12, 24, 2, 30,  0,  8,  0,  0},  /* WILDWOOD */
+    {   8,  30, 110, 100, 12, 12, 3, CV_SC_PENTA, -12, 34, 0,  6,  2, 18,  8, 50},  /* GLASS GDN */
+    {  36,  60, 122, 86, 4, 16, 4, CV_SC_CHORD,  -12, 20, 0, 18,  0, 24,  0,  0},  /* SLOW BLOOM */
+    {  66,  94, 106, 96, 10, 10, 3, CV_SC_CHORD, -12, 88, 1,  4,  3,  0,  7, 40},  /* CHOIR */
+    {  98, 126, 80, 100, 24, 18, 4, CV_SC_MINP,   -5, 40, 0, 20,  0, 30,  6, 60},  /* MELT */
+    {   0, 127, 116, 90, 10, 20, 12, CV_SC_PENTA, -12, 60, 4, 26, 2, 12,  0,  0},  /* DREAMSCAPE */
+    {   1,  31, 20, 120, 16, 8, 10, CV_SC_OCT,   -12, 80, 4, 30,  0,  0,  5, 70},  /* DATA RAIN */
+    {  33,  63, 34, 110, 24, 16, 8, CV_SC_WILD,    0, 80, 3,  0,  6,  0,  3, 60},  /* BENT */
+    {  66,  94, 90, 92, 14, 14, 3, CV_SC_CHORD,  -12, 50, 0,  6,  5,  0,  8, 70},  /* WOW+FLUTR */
+    {  96, 127, 70, 92, 30, 20, 10, CV_SC_FIFTH, -12, 70, 4, 26,  0, 20,  4, 50},  /* SHORTWAVE */
+    {   0, 127, 14, 124, 10, 6, 20, CV_SC_WILD,    0, 90, 4, 40,  8,  0,  5, 100}, /* MELTDOWN */
+    {   0, 127, 60, 114, 40, 20, 14, CV_SC_MINP, -12, 60, 4, 40,  0, 20,  0,  0},  /* STORM */
+    {  10, 118, 100, 96, 20, 16, 6, CV_SC_FIFTH,  0, 30, 1, 12,  2, 14,  8, 60},  /* BIOLUMIN */
+};
+static void canvas_load_layout(const track_t *t, uint32_t pi)
+{
+    const cv_recipe_t *r = &CV_RECIPE[pi % NELEM(CV_RECIPE)];
+    uint32_t g, ng = cv_ngrains(cv_lay(t->p));
+    for (g = 0; g < CV_KEYS; g++) {
+        uint32_t gg = g % ng, h = ((gg + pi * 7u) * 2654435761u) >> 24;      /* 0..255, a fixed scatter */
+        int32_t sc = (int32_t)(h & 63u) - 32;                             /* -32..31 */
+        int32_t pos = (int32_t)r->p0 + (int32_t)((r->p1 - r->p0) * gg / (ng > 1u ? ng - 1u : 1u));
+        uint32_t step = gg * 6u * (ng > 8u ? 2u : 3u) / ng;               /* through the scale: 2 or 3 octaves */
+        int32_t ptch = r->base + CV_SCALE[r->scale][step % 6u] + 12 * (int32_t)(step / 6u) * (r->scale != CV_SC_NONE);
+        pos += sc * r->vpos / 32;
+        cv_set(t, g, CV_POS, pos);
+        cv_set(t, g, CV_SIZE, (int32_t)r->size + sc * r->vsize / 32);
+        cv_set(t, g, CV_DENS, (int32_t)r->dens + ((int32_t)((h >> 2) & 63u) - 32) * r->vdens / 32);
+        cv_set(t, g, CV_PTCH, r->scale == CV_SC_NONE ? r->base * (gg < ng / 3u) : ptch);
+    }
+}
+/* .. and its movement (a preset load only: a project or user preset brings its own) */
+static void canvas_load_sound(track_t *t, uint32_t pi)
+{
+    const cv_recipe_t *r = &CV_RECIPE[pi % NELEM(CV_RECIPE)];
+    t->p[P_LRATE] = r->lrate;
+    t->p[P_LWAVE] = r->lwave;
+    t->p[P_LD_SHP] = r->lshp;
+    t->p[P_LD_PIT] = r->lpit;
+    t->p[P_LD_FLT] = r->lflt;
+    t->p[P_ITYPE] = r->ins;
+    if (r->ins) {
+        t->p[P_IA] = r->ia;
+        t->p[P_IMIX] = 70;
+    }
+}
+#else
 /* the factory presets' grains (CV_PRESET: the shape; the others by a formula, every grain different) */
 static const uint8_t CV_MAJ[7] = {0, 2, 4, 5, 7, 9, 11};
 static void canvas_load_layout(const track_t *t, uint32_t pi)
@@ -557,6 +632,9 @@ static void canvas_load_layout(const track_t *t, uint32_t pi)
         cv_set(t, g, CV_PTCH, ptch);
     }
 }
+static void canvas_load_sound(track_t *t, uint32_t pi) { (void)t, (void)pi; }
+
+#endif
 
 /* the grains of track tr in an FM6 patch area (FM6_PACKED 7-bit bytes: projects, user presets): bytes 0..107 the 27 x 4
  * values, 120 121 the mark, 122 the version (2) */
@@ -589,6 +667,32 @@ _Static_assert(CV_KEYS * CV_NV <= 120u && FM6_PACKED >= 123u, "the grains in an 
 /* the keys play their own notes: key k = note 53 + k (no scale, no octave) */
 static int32_t canvas_keys(const track_t *t, uint32_t k) { (void)t; return CV_NOTE0 + (int32_t)k; }
 
+#if FELUCCA_CANVAS_KEYS >= 0
+#define CVP(n, src, mode, spry, fade, rnd, tone, crsh, d, c, dl, rv) \
+    {n, {src, FELUCCA_CANVAS_KEYS, mode, spry, fade, rnd, tone, crsh}, {0, 0, 127, 0}, 0, 0, FX(d, c, dl, rv), PAT(0)}
+static const preset_t CANVAS_PRESETS[] = {
+    /* name, SRC, MODE, SPRY, FADE, RAND, TONE, CRSH, sends DIST CHORUS DELAY REVERB; the grains and the movement:
+     * CV_RECIPE, in this order (category.c: their categories) */
+    CVP("RAINFALL", CV_SRC_PIANO, CV_LATCH, 40, 90, 8, 104, 60, 0, 20, 10, 90),
+    CVP("CREEK", CV_SRC_PIANO, CV_LATCH, 30, 70, 6, 112, 60, 0, 10, 30, 70),
+    CVP("DAWN SONG", CV_SRC_PIANO, CV_LATCH, 46, 60, 10, 120, 60, 0, 20, 55, 80),
+    CVP("NIGHT POND", CV_SRC_PIANO, CV_LATCH, 30, 100, 4, 96, 60, 0, 30, 25, 100),
+    CVP("WILDWOOD", CV_SRC_PIANO, CV_LATCH, 60, 110, 12, 108, 60, 0, 40, 30, 110),
+    CVP("GLASS GDN", CV_SRC_FLUTE, CV_LATCH, 24, 90, 5, 118, 60, 0, 50, 45, 110),
+    CVP("SLOW BLOOM", CV_SRC_FLUTE, CV_LATCH, 36, 124, 6, 100, 60, 0, 60, 20, 120),
+    CVP("CHOIR", CV_SRC_FLUTE, CV_LATCH, 20, 100, 4, 108, 60, 0, 40, 30, 110),
+    CVP("MELT", CV_SRC_FLUTE, CV_LATCH, 44, 80, 16, 104, 60, 10, 50, 40, 90),
+    CVP("DREAMSCAPE", CV_SRC_FLUTE, CV_LATCH, 70, 118, 20, 110, 60, 0, 60, 40, 124),
+    CVP("DATA RAIN", CV_SRC_SAX, CV_LATCH, 70, 20, 30, 127, 100, 10, 10, 50, 50),
+    CVP("BENT", CV_SRC_SAX, CV_LATCH, 50, 30, 24, 124, 90, 20, 20, 40, 40),
+    CVP("WOW+FLUTR", CV_SRC_SAX, CV_LATCH, 24, 80, 8, 100, 60, 10, 50, 45, 80),
+    CVP("SHORTWAVE", CV_SRC_SAX, CV_LATCH, 60, 50, 18, 116, 80, 15, 20, 60, 70),
+    CVP("MELTDOWN", CV_SRC_SAX, CV_HOLD, 90, 8, 44, 127, 127, 30, 10, 60, 40),
+    CVP("STORM", CV_SRC_MIX, CV_LATCH, 90, 60, 26, 116, 90, 10, 30, 50, 100),
+    CVP("BIOLUMIN", CV_SRC_MIX, CV_LATCH, 40, 100, 10, 112, 60, 0, 70, 50, 120),
+};
+_Static_assert(NELEM(CANVAS_PRESETS) == NELEM(CV_RECIPE), "a recipe each");
+#else
 static const preset_t CANVAS_PRESETS[] = {
     /* name, {SRC, KEYS, MODE, SPRY, FADE, RAND, TONE, CRSH}, {A D S R}, fenv, mono; the grains: canvas_load_layout */
     {"SPREAD", {CV_SRC_MIX, CV_LAYP(CV_LAY_16), CV_LATCH, 20, 40, 6, 120, 60}, {0, 0, 127, 0}, 0, 0, FX(0, 30, 25, 80), PAT(0)},
@@ -598,6 +702,7 @@ static const preset_t CANVAS_PRESETS[] = {
     {"DRONE", {CV_SRC_FLUTE, CV_LAYP(CV_LAY_16), CV_LATCH, 50, 110, 10, 90, 60}, {0, 0, 127, 0}, 0, 0, FX(0, 60, 20, 110), PAT(0)},
     {"PERC", {CV_SRC_SAX, CV_LAYP(CV_LAY_16), CV_HOLD, 6, 4, 0, 127, 70}, {0, 0, 127, 0}, 0, 0, FX(0, 15, 40, 50), PAT(0)},
 };
+#endif
 
 static const engine_t ENG_CANVAS = {
     .name = "CANVAS",

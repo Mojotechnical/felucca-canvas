@@ -23,7 +23,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Python packages
-        run: pip install Pillow fonttools
+        run: pip install Pillow fonttools numpy
       - name: JieLi toolchain and SDK
         run: |
           tools/get_toolchain.sh

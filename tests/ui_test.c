@@ -10155,6 +10155,67 @@ static int test_canvas(void)
 static int test_canvas(void) { return 0; }
 #endif
 
+#if CANVAS_ONLY
+/* Felucca Canvas, the granular-only firmware: every part CANVAS whatever loads; HOME is the GRAINS page (the fractal);
+ * PRESETS offers the granular sounds only */
+static int test_canvas_only(void)
+{
+    int bad = 0, ok;
+    uint32_t i, n0;
+    ui_power_on();
+    stop_transport();
+    canvas_boot();
+    frame();
+    ok = canvas_page_on();
+    for (i = 0; i < NTRK; i++)
+        ok &= trk[i].eng_req == ENGI_CANVAS;
+    bad += check("CANVAS ONLY: power-on: four CANVAS parts, the GRAINS page", ok);
+    set_engine_of(&trk[1], ENGI_FM6);                  /* (a project, a user preset, the editor: another engine) */
+    set_engine_of(&trk[0], ENGI_DRUM);
+    frame();
+    canvas_lock();
+    frame();
+    ok = trk[0].eng_req == ENGI_CANVAS && trk[1].eng_req == ENGI_CANVAS && trk[1].preset == TRK_DEF[1][1];
+    bad += check("CANVAS ONLY: a part loaded with another engine is CANVAS again (its power-on sound)", ok);
+    home_tap();
+    frame();
+    ok = !canvas_page_on() && cur_page()->fam == FAM_TRK;
+    home_tap();
+    frame();
+    ok &= cur_page()->fam == FAM_TRK || canvas_page_on();
+    go_home();
+    frame();
+    ok &= canvas_page_on() && !ui.home;
+    open_family(FAM_LFO);
+    frame();
+    ok &= !canvas_page_on();
+    go_home();
+    frame();
+    ok &= canvas_page_on();
+    bad += check("CANVAS ONLY: HOME shows the GRAINS page (its fractal); again the MIXER; HOME back to GRAINS", ok);
+    n0 = ENGINES[ENGI_CANVAS]->npresets;
+    ok = NENG_SHOWN == 1 && eng_vis(0) == ENGI_CANVAS && eng_step(ENGI_CANVAS, 1) == ENGI_CANVAS && n0 >= 12u;
+    open_family(FAM_LFO);                              /* (on GRAINS the PRESETS knob picks a grain) */
+    frame();
+    {
+        uint32_t seen = 0;
+        for (i = 0; i < n0 + 3u; i++) {
+            turn(EN_PRESET, 1);
+            frames(80);
+            ok &= TSEL->eng_req == ENGI_CANVAS;
+            seen |= 1u << (TSEL->preset & 31u);
+        }
+        ok &= seen == (1u << n0) - 1u;
+    }
+    bad += check("CANVAS ONLY: PRESETS browses the granular sounds only (every one CANVAS, round)", ok);
+    go_home();
+    frame();
+    return bad;
+}
+#else
+static int test_canvas_only(void) { return 0; }
+#endif
+
 int main(void)
 {
     setvbuf(stdout, NULL, _IONBF, 0);
@@ -10173,6 +10234,7 @@ int main(void)
     bad += test_tracks();
     bad += test_grid();
     bad += test_canvas();
+    bad += test_canvas_only();
     bad += test_screen();
     bad += test_favorites();
     bad += test_categories();

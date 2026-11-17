@@ -40,6 +40,12 @@
                                          * stays ADPCM's (a silent "-" without FELUCCA_ADPCM, never offered: eng_ok).
                                          * Not with the retired DIGITAL (FELUCCA_FM4=1): the EDIT layer has 16 white keys */
 #endif
+/* FELUCCA_CANVAS_KEYS (build.py): -1 a build of every CANVAS layout (the default); 0 / 1 / 2 the Felucca Canvas
+ * firmware of one layout (16+FX, 27, 8+CTL): the granular-only instrument (eng_canvas.c, ui_canvas.c canvas_lock) */
+#ifndef FELUCCA_CANVAS_KEYS
+#define FELUCCA_CANVAS_KEYS (-1)
+#endif
+#define CANVAS_ONLY (FELUCCA_CANVAS && FELUCCA_CANVAS_KEYS >= 0)
 #if FELUCCA_CANVAS && FELUCCA_FM4
 #error "FELUCCA_CANVAS and FELUCCA_FM4: one engine too many for the EDIT layer's white keys (ui_layer.c LY_CLEAN)"
 #endif
@@ -56,8 +62,12 @@
 #define ENGI_CANVAS 15u
 #define ENG_RESERVED_N (FELUCCA_CANVAS && !FELUCCA_ADPCM)   /* 1: engine 14 is a reserved place (never offered) */
 #define ENGI_DIGITAL 1u          /* reserved without FELUCCA_FM4: never selectable (eng_ok), its sounds load as FM6 */
+#if CANVAS_ONLY
+#define NENG_SHOWN 1               /* Felucca Canvas (granular only): CANVAS alone is offered */
+#else
 #define NENG_SHOWN (NENGINES - !FELUCCA_FM4 - ENG_RESERVED_N)   /* the engines one can pick: PRESETS, the EDIT layer, the editor,
                                                 * in the display order of engines.c ENGINE_ORDER */
+#endif
 #define UP_SLOTS 32u             /* user presets (upreset.c) */
 
 /* ------------------------------------------------------- parameters --- */

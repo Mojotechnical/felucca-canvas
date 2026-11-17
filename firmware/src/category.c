@@ -37,7 +37,11 @@ static const char *const PRESET_CAT[16] = {
     "DD",                        /* 13 SLICE: CHOP, STUTTER */
     "LLBBKKPD",                  /* 14 ADPCM: SQUARE LEAD, PULSE LEAD, SAW BASS, SUB BASS, SOFT SINE, ORGAN, ECHO PAD,
                                   * NOISE HAT */
+#if FELUCCA_CANVAS_KEYS >= 0
+    "OOOOOPPPPPFFFFFFP",         /* 15 CANVAS (granular-only): 5 NATURE (OTHER), 5 DREAM (PAD), GLITCH (FX), STORM, BIOLUMIN */
+#else
     "PPKFPD",                    /* 15 CANVAS: SPREAD, CLOUDS, CHORDS, GLITCH, DRONE, PERC */
+#endif
 };
 static uint32_t preset_cat(uint32_t e, uint32_t k)    /* factory preset k of engine e */
 {

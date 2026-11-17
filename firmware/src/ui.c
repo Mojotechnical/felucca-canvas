@@ -795,8 +795,12 @@ static void open_family(uint32_t fam)
     page_entered();
 }
 
+static int canvas_show(void);                         /* ui_canvas.c */
+static int canvas_page_on(void);
 static void go_home(void)
 {
+    if (CANVAS_ONLY && canvas_show())                 /* Felucca Canvas: HOME is the GRAINS page (its fractal) */
+        return;
     ui.home = 1;
     ui.plk_src = 0;                              /* (parameter locks: HOME's four) */
     ui.entry_open = 0;
@@ -812,7 +816,7 @@ static void go_home(void)
 static void home_tap(void)
 {
     uint32_t i = ui.page + 1u;
-    if (ui.home) {
+    if (ui.home || (CANVAS_ONLY && canvas_page_on())) {   /* (Felucca Canvas: from the GRAINS page, the MIXER) */
         ui.fam_last[FAM_TRK] = 0;                     /* (open_family: the family's first, the MIXER) */
         open_family(FAM_TRK);
     } else if (cur_page()->fam == FAM_TRK && i < NPAGES && PAGES[i].fam == FAM_TRK) {
@@ -1396,8 +1400,10 @@ static void apply_preset_to(track_t *t, uint32_t pi)
     for (i = 0; i < 8u; i++)
         t->p[P_E0 + i] = (int16_t)e->presets[pi].e[i];
 #if FELUCCA_CANVAS
-    if (e == &ENG_CANVAS)                             /* its grains (eng_canvas.c canvas_load_layout) */
+    if (e == &ENG_CANVAS) {                           /* its grains and movement (eng_canvas.c canvas_load_layout) */
         canvas_load_layout(t, pi);
+        canvas_load_sound(t, pi);
+    }
 #endif
     t->p[P_ATK] = e->presets[pi].env[0];
     t->p[P_DEC] = e->presets[pi].env[1];
