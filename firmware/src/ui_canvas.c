@@ -5,6 +5,11 @@
  *   PRESETS      picks the next / previous grain (without playing it)
  *   KEYS         play as everywhere (grains, glitches, controls: the layout, KEYS); pressing a grain key picks it, so
  *                hold a grain key and turn the knobs to shape it while it sounds
+ * The fractal (above the map, ui_graph.c graph_canvas): a Julia set the grains steer (canvas_fractal_step): their POS and
+ * levels pick where on the Mandelbrot set's edge its constant c sits, so every set of grains has its own shape and a fade
+ * morphs it;
+ * the glitches warp it (SCATR CRUSH jitter, FREEZ stops it, REVRS runs it back, JUMP BURST pulse its zoom); with nothing
+ * sounding it drifts slowly, dimmer. Coloured from the palette (BG -> SEL -> THEME -> ACCENT -> TEXT), so it follows it.
  * The map: the black keys over the white ones, as on the FM-1; a grain on (latched or held) THEME, sounding in its fade
  * MID, a glitch or control held ACCENT (idle: a dim stub), the picked grain ringed; under it the picked grain or the key
  * pressed last, and SRC. The keys' LEDs (any page): the grains that are on. */
@@ -15,7 +20,79 @@ static struct {
     uint8_t sel;                 /* the picked grain */
     uint8_t last;                /* the key pressed last (+ 1, 0 = none yet) */
     uint32_t seen;               /* cv_part_t.pressed as last followed */
+    int32_t t;                   /* the fractal's time (1/1024 turns of its drift), once a frame */
+    int32_t cr, ci;              /* its constant c, Q12, easing towards what the grains ask */
+    int32_t zoom;                /* Q12 (4096 = the whole set) */
+    uint8_t lit;                 /* 1: something sounds (full colour) */
+    uint8_t crush;               /* CRUSH held: coarse cells */
 } cvs;
+
+static cv_part_t *canvas_part(void);
+
+/* sin of a in 1/1024 turns, Q12 (a parabola per half turn: smooth enough for a drift) */
+static int32_t cv_sin(int32_t a)
+{
+    int32_t x = a & 1023, s = 1;
+    if (x >= 512) {
+        x -= 512;
+        s = -1;
+    }
+    return s * (x * (512 - x) / 16);                     /* 4 x (512 - x) / 512^2, Q12: x (512 - x) / 16 */
+}
+static int32_t cv_cos(int32_t a) { return cv_sin(a + 256); }
+
+/* once a frame: the fractal follows the grains (c, the zoom, the time). c runs along the edge of the Mandelbrot set's
+ * main cardioid, c = r (e^{i th} / 2 - e^{2 i th} / 4), where every Julia set is intricate: the grains sounding pick th
+ * (their POS, weighted by their levels; a slow drift on top), how many sound pick r (1.0 alone, fine filaments,
+ * up to 1.044 with many, scattering into dust) */
+static void canvas_fractal_step(void)
+{
+    cv_part_t *P = canvas_part();
+    int32_t sum = 0, acc = 0, dt = 2, z = 4096, th, r, jr = 0, ji = 0, tr, ti, nsnd = 0;
+    uint32_t g, on;
+    cvs.lit = 0;
+    cvs.crush = 0;
+    if (P) {
+        on = P->latched | P->held;
+        for (g = 0; g < CV_KEYS; g++) {
+            int32_t lv = P->gain[g] >> 3;                 /* Q12 */
+            if (lv <= 0)
+                continue;
+            acc += cv_get(TSEL, g, CV_POS) * 8 * lv / 4096;   /* POS 0..127 -> a turn (1024) */
+            sum += lv;
+            nsnd++;
+        }
+        cvs.lit = on || sum > 0;
+        dt = cvs.lit ? 4 + nsnd * 2 : 2;
+        if ((P->glitch >> CV_GL_FRZ) & 1u)
+            dt = 0;
+        if ((P->glitch >> CV_GL_REV) & 1u)
+            dt = -dt;
+        if (P->glitch & ((1u << CV_GL_JUMP) | (1u << CV_GL_BURST) | (1u << CV_GL_R16) | (1u << CV_GL_R32)))
+            z = 4096 - (cv_sin(cvs.t * 8) > 0 ? 1100 : 0);   /* a pulse */
+        if ((P->glitch >> CV_GL_TAPE) & 1u)
+            z = 4096 + 1400;
+        if (P->glitch & ((1u << CV_GL_SCAT) | (1u << CV_GL_CRUSH))) {
+            uint32_t q = (uint32_t)cvs.t * 2654435761u;
+            jr = (int32_t)((q >> 8) & 255u) - 128;
+            ji = (int32_t)((q >> 20) & 255u) - 128;
+        }
+        cvs.crush = (P->glitch >> CV_GL_CRUSH) & 1u;
+    }
+    cvs.t += dt;
+    th = (sum > 0 ? acc * 4096 / sum : 0) + 300 + cvs.t / 4;   /* (300: at rest, a spiral) */
+    r = 4100 + (nsnd > 8 ? 8 : nsnd) * 22;                /* 1.0 .. 1.044, Q12 */
+    tr = (cv_cos(th) / 2 - cv_cos(2 * th) / 4) * r / 4096 + jr;
+    ti = (cv_sin(th) / 2 - cv_sin(2 * th) / 4) * r / 4096 + ji;
+    if (!cvs.cr && !cvs.ci) {
+        cvs.cr = tr;
+        cvs.ci = ti;
+        cvs.zoom = z;
+    }
+    cvs.cr += (tr - cvs.cr) / 6;                          /* eased: a fade morphs it */
+    cvs.ci += (ti - cvs.ci) / 6;
+    cvs.zoom += (z - cvs.zoom) / 3;
+}
 
 static int canvas_page_ok(void) { return TSEL->eng_req % NENGINES == ENGI_CANVAS; }
 static int canvas_page_on(void) { return !ui.home && cur_page()->graph == GR_CANVAS && canvas_page_ok(); }
@@ -90,6 +167,8 @@ static uint32_t canvas_sig(void)
     cv_part_t *P = canvas_part();
     uint32_t h = 2166136261u, g;
     canvas_follow();
+    canvas_fractal_step();
+    h = (h ^ (uint32_t)(cvs.cr * 31 + cvs.ci * 7 + cvs.zoom + cvs.crush)) * 16777619u;   /* (it moves: a redraw a frame) */
     if (P) {
         h = (h ^ P->latched) * 16777619u;
         h = (h ^ P->held) * 16777619u;

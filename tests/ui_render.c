@@ -2284,9 +2284,54 @@ static void al_table(void)
             al_count, al_nst, al_fail, al_lost);
 }
 
+#if FELUCCA_CANVAS
+/* CANVAS_ANIM=PALETTE ui_render OUTDIR: the GRAINS page's fractal frame by frame (OUTDIR/ppm/PALETTE_f000.ppm ..), a
+ * preview, not a check: a scripted performance: grains latched one by one (their fades), SCATR, FREEZ, CRUSH held,
+ * the grains off one by one */
+static int canvas_anim(const char *out, const char *pn)
+{
+    static const uint8_t ON_AT[6] = {12, 30, 48, 66, 84, 102}, GR[6] = {0, 4, 9, 2, 13, 7};
+    uint32_t p, f, g, pi = 0;
+    cv_part_t *P;
+    char name[32];
+    for (p = 0; p < NPALETTES; p++)
+        if (!strcmp(UI_PALETTES[p].name, pn))
+            pi = p;
+    setup((int)S_CANVAS);
+    P = cv_of(TSEL);
+    P->latched = 0;
+    P->glitch = 0;
+    memset(P->gain, 0, sizeof P->gain);
+    cvs.cr = cvs.ci = 0;
+    pal(pi);
+    for (f = 0; f < 240u; f++) {
+        for (g = 0; g < 6u; g++) {
+            if (f == ON_AT[g]) { P->latched |= 1u << GR[g]; cvs.sel = GR[g]; cvs.last = 0; }
+            if (f == 180u + g * 8u) P->latched &= ~(1u << GR[g]);
+        }
+        P->glitch = f >= 120u && f < 140u ? 1u << CV_GL_SCAT : f >= 140u && f < 155u ? 1u << CV_GL_FRZ :
+                    f >= 155u && f < 170u ? 1u << CV_GL_CRUSH : 0u;
+        for (g = 0; g < CV_KEYS; g++) {                 /* the streams' fades, as the engine would (~0.3 s) */
+            int32_t to = ((P->latched >> g) & 1u) ? 32768 : 0, d = to - P->gain[g];
+            P->gain[g] += d > 3000 ? 3000 : d < -3000 ? -3000 : d;
+        }
+        P->pressed = cvs.seen;                          /* (no key followed: the pick is the script's) */
+        draw((int)S_CANVAS);
+        snprintf(name, sizeof name, "f%03u", f);
+        write_ppm(out, pn, name);
+    }
+    printf("canvas_anim: 240 frames in %s/ppm\n", out);
+    return 0;
+}
+#endif
+
 int main(int argc, char **argv)
 {
     const char *out = argc > 1 ? argv[1] : "build/ui_new";
+#if FELUCCA_CANVAS
+    if (getenv("CANVAS_ANIM"))
+        return canvas_anim(out, getenv("CANVAS_ANIM"));
+#endif
     char path[600];
     uint32_t p, s;
     static const char *const SHOW[] = {"GREY", "MONO", "GREEN", "PAPER", "NIGHT"};   /* (NIGHT: #50, to review) */

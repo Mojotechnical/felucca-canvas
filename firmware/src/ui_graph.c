@@ -685,15 +685,49 @@ static void graph_slices(void)
 #endif
 
 #if FELUCCA_CANVAS
-/* GRAINS (ui_canvas.c): the keys as on the FM-1, the black row over the white; a white key 13.5 px apart (x 12..228). A grain
- * on THEME, fading out MID, off RAISE; the picked grain ringed in TEXT; a glitch or control a short stub (MID), held ACCENT;
- * then the label (the picked grain or the key pressed last) and SRC (DIM: no material, it is silent) */
+/* GRAINS (ui_canvas.c): the fractal (x 12..228, y 2..80), the label and SRC (y 80), then the keys as on the FM-1, a
+ * slim strip: the black row (y 96..105) over the white (y 107..122), a white key 13.5 px apart. A grain on THEME,
+ * fading out MID, off RAISE; the picked grain ringed in TEXT; a glitch or control a short stub, held ACCENT */
+#define CV_FX_X 12
+#define CV_FX_Y 2
+#define CV_FX_W 216
+#define CV_FX_H 78
+static void graph_fractal(void)
+{
+    uint16_t ramp[16];
+    const uint16_t stops[5] = {T_BG, T_SEL, T_THEME, T_ACCENT, T_TEXT};
+    int32_t cell = cvs.crush ? 6 : 2, x, y, i, cr = cvs.cr, ci = cvs.ci, sc = cvs.zoom ? cvs.zoom : 4096;
+    int32_t step = 3 * 4096 * sc / 4096 * 16 / 15 / CV_FX_W; /* Q12 a pixel: the view 3.2 wide (zoom: more) */
+    uint16_t inside;
+    for (i = 0; i < 16; i++) {                           /* the palette's ramp: dim at rest */
+        int32_t f = i * 4 * 100 / 15, k = f / 100;
+        uint16_t c = k >= 4 ? stops[4] : ux_mix(stops[k], stops[k + 1], f - k * 100);
+        ramp[i] = cvs.lit ? c : ux_mix(T_BG, c, 55);
+    }
+    inside = ux_mix(T_BG, ramp[4], 30);                   /* the set itself: dark, so its edge glows */
+    for (y = 0; y < CV_FX_H; y += cell) {
+        int32_t zy0 = (y + cell / 2 - CV_FX_H / 2) * step;
+        for (x = 0; x < CV_FX_W; x += cell) {
+            int32_t zx = (x + cell / 2 - CV_FX_W / 2) * step, zy = zy0, n = 0;
+            for (; n < 24; n++) {                        /* z = z^2 + c, Q12; out past |z| = 2 (24: the cost a frame) */
+                int32_t xx = (zx * zx) >> 12, yy = (zy * zy) >> 12;
+                if (xx + yy > 4 * 4096)
+                    break;
+                zy = ((zx * zy) >> 11) + ci;
+                zx = xx - yy + cr;
+            }
+            cv_rect(CV_FX_X + x, CV_FX_Y + y, x + cell > CV_FX_W ? CV_FX_W - x : cell,
+                    y + cell > CV_FX_H ? CV_FX_H - y : cell, n >= 24 ? inside : ramp[n <= 2 ? 0 : n > 15 ? 15 : n]);
+        }
+    }
+}
 static void graph_canvas(void)
 {
     cv_part_t *P = canvas_part();
     uint32_t k, idx, lay = cv_lay(TSEL->p), src = cv_src(TSEL->p), sel = canvas_sel();
     uint32_t on = P ? P->latched | P->held : 0u;
     char t[16];
+    graph_fractal();
     for (k = 0; k < CV_KEYS; k++) {
         int32_t w = CV_WHITE[k % 12u], bl = CV_BLACK[k % 12u], o = (int32_t)(k / 12u), x, y, h, cw;
         uint32_t role = cv_role(lay, k, &idx);
@@ -701,12 +735,12 @@ static void graph_canvas(void)
         if (w >= 0) {                                   /* white: x 12 + place * 13.5, the lower row */
             int32_t pl = o * 7 + w;
             x = 12 + pl * 27 / 2;
-            y = 54, h = 40, cw = 12;
+            y = 108, h = 15, cw = 12;
         } else {                                        /* black: between its two white neighbours, the upper row */
             static const int8_t AFTER[5] = {0, 1, 2, 4, 5};   /* the white place left of F# G# A# C# D# */
             int32_t pl = o * 7 + AFTER[bl];
             x = 12 + pl * 27 / 2 + 7;
-            y = 8, h = 38, cw = 12;
+            y = 96, h = 10, cw = 12;
         }
         if (role == CV_R_GRAIN) {
             uint32_t lit = (on >> idx) & 1u;
@@ -719,12 +753,12 @@ static void graph_canvas(void)
             if (held)
                 cv_rrect(x, y, cw, h, 2, T_ACCENT, T_SURF);
             else
-                cv_rrect(x, y + h - 8, cw, 8, 2, role == CV_R_GLITCH ? T_MID : T_DIM, T_SURF);
+                cv_rrect(x, y + h - 4, cw, 4, 1, role == CV_R_GLITCH ? T_MID : T_DIM, T_SURF);
         }
     }
     canvas_label(t, sizeof t);
-    cv_text(12, 102, &AF_M, t, T_TEXT);
-    cv_text_r(228, 102, &AF_M, N_CV_SRC[src], cv_nzones(src) ? T_THEME : T_DIM, T_SURF);
+    cv_text(12, 80, &AF_M, t, T_TEXT);
+    cv_text_r(228, 80, &AF_M, N_CV_SRC[src], cv_nzones(src) ? T_THEME : T_DIM, T_SURF);
 }
 #endif
 
