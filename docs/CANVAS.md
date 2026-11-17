@@ -128,7 +128,7 @@ a progress bar (the step-by-step log folded under Details) and a link back to th
 1. Repository **Settings > Pages > Source: GitHub Actions** (once).
 2. Every push to `main` (or **Actions > Build and publish installer > Run workflow**) builds and publishes. The three
    `.fwsc` files are also attached to each run.
-3. Open `https://<your-user>.github.io/<repo>/` in **Chrome or Edge**, pick a firmware, connect the FM-1 by USB and
+3. Open https://mojotechnical.github.io/felucca-canvas/ (forks: `https://<your-user>.github.io/<repo>/`) in **Chrome or Edge**, pick a firmware, connect the FM-1 by USB and
    press Install.
 
 The site generator is `tools/make_canvas_site.py` (it uses Felucca's `web/make_site.py` for each installer).

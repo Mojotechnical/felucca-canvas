@@ -1,25 +1,24 @@
-# Felucca
+# Felucca Canvas
 
-> **This is Felucca Canvas, an unofficial fork.** It adds **CANVAS**, a granular performance engine: every key is a grain
-> stream with its own position, size, density and pitch, latched or held, blending as they sound; black keys hold glitch
-> effects. See [docs/CANVAS.md](docs/CANVAS.md) for how to play, build and flash it. Everything below is upstream Felucca's README;
-> the hosted installer and the support channels it links are upstream's, not this fork's.
+## ▶ Install Felucca Canvas: https://mojotechnical.github.io/felucca-canvas/
+
+**Use the link above, not the "Felucca" links further down.** Those go to upstream Felucca, the plain synth firmware without
+CANVAS. The Felucca Canvas page lists the three builds (16+FX, 27, 8+CTL), each with its own Install button. The startup screen
+shows which one is running: **v1.8-c16**, **v1.8-c27** or **v1.8-c8**.
+
+Felucca Canvas is an unofficial fork of Felucca for the M-VAVE FM-1. It adds **CANVAS**, a granular performance engine: every key
+is a grain stream with its own position, size, density and pitch, latched or held, blending as they sound; black keys hold glitch
+effects, and the GRAINS page draws a fractal that reacts to what you play. See [docs/CANVAS.md](docs/CANVAS.md).
 
 [![License: GPL-3.0-only](https://img.shields.io/badge/license-GPL--3.0--only-blue.svg)](LICENSE)
 
-Felucca is open-source custom synthesizer firmware for the **M-VAVE FM-1**.
+---
 
-The FM-1 is the only supported hardware target. This project does not provide, maintain, or accept requests for ports to other devices or software platforms.
-
-## Install
-
-**Stable release: 1.8.2.** Connect your FM-1 by USB and use the [web installer](https://hugelton.github.io/Felucca/) in Chrome or Edge. The installer offers a way back to the official V15 or V16 firmware. Back up your projects and presets before changing firmware.
-
-**Newer FM-1 flash.** Some newer FM-1 units use UC25HQ80 flash (JEDEC ID `0xB36014`). 1.8.2 recognises it. On such a unit, 1.8.1 and earlier cannot start an update; see the [1.8.2 release notes](https://github.com/hugelton/Felucca/releases/tag/v1.8.2) for the way back through the official V15.
+*Everything below is upstream Felucca's README. Its installer, editor and support links are upstream's, not this fork's.*
 
 ## Project resources
 
-- [Web installer](https://hugelton.github.io/Felucca/)
+- [Upstream Felucca web installer](https://hugelton.github.io/Felucca/) (installs plain Felucca, not Canvas)
 - [Web editor](https://hugelton.github.io/Felucca/webapp/editor/) ([source](https://github.com/hugelton/Felucca-WebApp))
 - [Try it in your browser](https://hugelton.github.io/Felucca/webapp/try/): a demo of the firmware, no FM-1 needed
 - [Manual and release notes](https://github.com/hugelton/Felucca/wiki/Home)
